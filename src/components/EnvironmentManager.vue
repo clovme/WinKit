@@ -94,6 +94,11 @@ const selectedCounts = computed(() => {
   };
 });
 
+const enabledProfiles = computed(() => profiles.value.filter((profile) => profile.enabled));
+const enabledVariableCount = computed(() =>
+  enabledProfiles.value.reduce((total, profile) => total + profile.variables.length, 0)
+);
+
 function setNotice(text: string, tone: NoticeTone = "ok") {
   notice.value = text;
   noticeTone.value = tone;
@@ -493,6 +498,52 @@ async function applySelected() {
   }
 }
 
+async function applyAllProfiles() {
+  if (saving.value) return;
+  if (!isTauri()) {
+    setNotice("浏览器预览不会写入注册表；方案只保存在预览里", "warn");
+    return;
+  }
+  if (!enabledProfiles.value.length) {
+    setNotice("没有已启用的方案，先勾选左侧方案再写入", "warn");
+    return;
+  }
+  if (!enabledVariableCount.value) {
+    setNotice("已启用的方案里还没有变量，先添加一行 key:value", "warn");
+    return;
+  }
+
+  saving.value = true;
+  let written = 0;
+  let skipped = 0;
+  const failures: string[] = [];
+  try {
+    for (const profile of enabledProfiles.value) {
+      for (const variable of profile.variables) {
+        const result = await writeVariable(variable, true);
+        if (result.ok) {
+          if (result.skipped) skipped += 1;
+          else written += 1;
+        } else {
+          failures.push(`${profile.name} / ${variable.name}：${result.message ?? "写入失败"}`);
+        }
+      }
+    }
+    await reloadSnapshot();
+    if (failures.length) {
+      setNotice(`已写入 ${written} 项，失败 ${failures.length} 项：${failures[0]}`, "warn");
+    } else if (!written && skipped) {
+      setNotice(`全部已设置，共 ${skipped} 项无需重复写入`);
+    } else {
+      setNotice(
+        `已写入 ${written} 项，${skipped} 项本来就已设置；覆盖 ${enabledProfiles.value.length} 个已启用方案`
+      );
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function deleteSystemVariable(variable: EnvironmentProfileVariable) {
   const existing = findExisting(variable);
   if (!existing) return;
@@ -721,7 +772,18 @@ function handleGlobalRefresh() {
               {{ profiles.length ? "没有匹配的方案" : "还没有方案，点下方新建" }}
             </div>
           </div>
-          <button class="env-group-add" type="button" @click="startCreateProfile">＋ 新建方案</button>
+          <div class="env-group-actions">
+            <button
+              class="btn btn-primary env-group-write-all"
+              type="button"
+              :disabled="saving || loading || !enabledProfiles.length || !enabledVariableCount"
+              title="写入所有已启用方案"
+              @click="applyAllProfiles"
+            >
+              全部写入
+            </button>
+            <button class="env-group-add" type="button" @click="startCreateProfile">＋ 新建方案</button>
+          </div>
         </aside>
 
         <main class="env-main">
@@ -772,9 +834,10 @@ function handleGlobalRefresh() {
                   class="btn btn-primary env-apply-all"
                   type="button"
                   :disabled="saving || loading || !selectedProfile.enabled || !selectedProfile.variables.length"
+                  title="只写入当前方案"
                   @click="applySelected"
                 >
-                  全部写入
+                  写入方案
                 </button>
                 <button class="btn btn-ghost env-delete-profile" type="button" @click="deleteProfile">
                   删除方案
@@ -788,7 +851,7 @@ function handleGlobalRefresh() {
             </div>
             <div v-else-if="snapshot && !systemWritable" class="env-readonly">
               <span class="env-readonly-icon">!</span>
-              <span>当前不是管理员：系统范围变量暂时写不进去。方案仍会保存，右键 WinKit.exe「以管理员身份运行」后点“全部写入”即可。</span>
+              <span>当前不是管理员：系统范围变量暂时写不进去。方案仍会保存，右键 WinKit.exe「以管理员身份运行」后点左侧“全部写入”即可。</span>
             </div>
 
             <div class="env-toolbar">
@@ -1307,6 +1370,23 @@ function handleGlobalRefresh() {
 .env-group-add:hover {
   border-color: #7eace0;
   background: #f4f9fe;
+}
+
+.env-group-actions {
+  margin: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.env-group-actions .env-group-add {
+  margin: 0;
+}
+
+.env-group-write-all {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
 }
 
 .env-main {

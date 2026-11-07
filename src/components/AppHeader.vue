@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type AppView = "processes" | "environment" | "shortcuts";
+type AppView = "processes" | "environment" | "services" | "shortcuts";
 defineProps<{ included: number; total: number; view: AppView }>();
 const emit = defineEmits<{ switch: [view: AppView] }>();
 </script>
@@ -41,7 +41,9 @@ const emit = defineEmits<{ switch: [view: AppView] }>();
               ? "WebView2、node 等多实例进程，筛选后批量结束"
               : view === "environment"
                 ? "按 JAVA / Go 方案维护，启动后真实检测"
-                : "选好程序，桌面与开始菜单快捷方式一键生成"
+                : view === "services"
+                  ? "把任意 exe 包装成 Windows 服务，一键恢复"
+                  : "选好程序，桌面与开始菜单快捷方式一键生成"
           }}
         </p>
       </div>
@@ -79,6 +81,22 @@ const emit = defineEmits<{ switch: [view: AppView] }>();
         </button>
         <button
           class="view-tab"
+          :class="{ active: view === 'services' }"
+          type="button"
+          title="服务管理：把任意 exe 注册为 Windows 服务，崩溃自动重启"
+          @click="emit('switch', 'services')"
+        >
+          <svg viewBox="0 0 18 18" width="15" height="15" aria-hidden="true">
+            <rect x="2.5" y="2.5" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <circle cx="6.5" cy="6.5" r="1.3" fill="currentColor" />
+            <circle cx="11.5" cy="6.5" r="1.3" fill="currentColor" />
+            <circle cx="6.5" cy="11.5" r="1.3" fill="currentColor" />
+            <circle cx="11.5" cy="11.5" r="1.3" fill="currentColor" />
+          </svg>
+          服务管理
+        </button>
+        <button
+          class="view-tab"
           :class="{ active: view === 'shortcuts' }"
           type="button"
           title="快捷方式：桌面与开始菜单快捷方式管理"
@@ -91,8 +109,16 @@ const emit = defineEmits<{ switch: [view: AppView] }>();
           快捷方式
         </button>
       </nav>
-      <span class="chip">{{ view === "environment" ? "Windows · 本机" : "Windows · 当前用户" }}</span>
-      <span v-if="view === 'shortcuts'" class="chip chip-accent">已加入 {{ included }} / {{ total }}</span>
+      <span class="chip chip-scope">{{
+        view === "environment" || view === "services" ? "Windows · 本机" : "Windows · 当前用户"
+      }}</span>
+      <span
+        class="chip chip-accent"
+        :class="{ 'chip-placeholder': view !== 'shortcuts' }"
+        :aria-hidden="view !== 'shortcuts'"
+      >
+        已加入 {{ included }} / {{ total }}
+      </span>
     </div>
   </header>
 </template>
@@ -226,5 +252,14 @@ const emit = defineEmits<{ switch: [view: AppView] }>();
   background: var(--accent-soft);
   color: var(--accent-strong);
   font-weight: 600;
+}
+
+.chip-scope {
+  min-width: 138px;
+  justify-content: center;
+}
+
+.chip-placeholder {
+  visibility: hidden;
 }
 </style>

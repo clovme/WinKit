@@ -350,3 +350,90 @@ export async function saveEnvironmentProfiles(
 }
 
 export type { EnvironmentProfileVariable };
+
+// ---------- 服务管理 ----------
+
+import type { ServiceConfigFile, ServiceDef, ServiceState } from "../types";
+
+const MOCK_SERVICE_CONFIG: ServiceConfigFile = {
+  version: 1,
+  services: [
+    {
+      id: "mock-bililive",
+      name: "WinKit-bililive",
+      displayName: "B站直播录制",
+      exePath: "D:\\application\\WTools\\Service\\bililive\\bililive-windows-amd64.exe",
+      args: "--config=D:\\application\\WTools\\data\\bililive\\config.yml",
+      workingDir: "D:\\application\\WTools\\Service\\bililive",
+      autostart: true,
+      restartOnCrash: true,
+      restartDelaySecs: 5,
+      logFile: "D:\\application\\WTools\\data\\bililive\\service.log",
+    },
+  ],
+};
+
+function cloneServices(services: ServiceDef[]): ServiceDef[] {
+  return JSON.parse(JSON.stringify(services)) as ServiceDef[];
+}
+
+/** 读取服务配置文件（WinKit-services.json）。 */
+export async function loadServiceConfigs(): Promise<ServiceConfigFile> {
+  if (!isTauri()) {
+    return { version: 1, services: cloneServices(MOCK_SERVICE_CONFIG.services) };
+  }
+  return invoke<ServiceConfigFile>("load_service_configs");
+}
+
+/** 保存服务配置文件（不注册到 SCM，只写 JSON）。 */
+export async function saveServiceConfigs(services: ServiceDef[]): Promise<string> {
+  if (!isTauri()) {
+    return "浏览器预览（不会写入文件）";
+  }
+  return invoke<string>("save_service_configs", { config: { version: 1, services } });
+}
+
+/** 把某个服务注册 / 重建为 Windows 服务。 */
+export async function registerService(def: ServiceDef): Promise<void> {
+  if (!isTauri()) throw new Error("浏览器预览：注册服务只在桌面应用中生效");
+  await invoke("register_service_command", { def });
+}
+
+/** 停止并从 SCM 删除服务（配置文件保留）。 */
+export async function unregisterService(name: string): Promise<void> {
+  if (!isTauri()) throw new Error("浏览器预览：卸载服务只在桌面应用中生效");
+  await invoke("unregister_service_command", { name });
+}
+
+export async function startService(name: string): Promise<void> {
+  if (!isTauri()) throw new Error("浏览器预览：启动服务只在桌面应用中生效");
+  await invoke("start_service_command", { name });
+}
+
+export async function stopService(name: string): Promise<void> {
+  if (!isTauri()) throw new Error("浏览器预览：停止服务只在桌面应用中生效");
+  await invoke("stop_service_command", { name });
+}
+
+export async function restartService(name: string): Promise<void> {
+  if (!isTauri()) throw new Error("浏览器预览：重启服务只在桌面应用中生效");
+  await invoke("restart_service_command", { name });
+}
+
+/** 查询单个服务在 SCM 里的状态。 */
+export async function queryServiceStatus(name: string): Promise<ServiceState> {
+  if (!isTauri()) return "not_installed";
+  return invoke<ServiceState>("query_service_status_command", { name });
+}
+
+/** 一键把配置文件里的所有服务注册并启动（重装后恢复用）。 */
+export async function applyAllServices(): Promise<string[]> {
+  if (!isTauri()) throw new Error("浏览器预览：一键恢复只在桌面应用中生效");
+  return invoke<string[]>("apply_all_services");
+}
+
+/** 抓取当前进程的关键环境变量快照（USERPROFILE / PATH / APPDATA 等）。 */
+export async function captureRuntimeEnv(): Promise<Record<string, string>> {
+  if (!isTauri()) return {};
+  return invoke<Record<string, string>>("capture_runtime_env");
+}

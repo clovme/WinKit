@@ -165,3 +165,34 @@ export interface ToastMessage {
   text: string;
   tone: ToastTone;
 }
+
+export type ServiceState =
+  | "running"
+  | "stopped"
+  | "start_pending"
+  | "stop_pending"
+  | "paused"
+  | "not_installed"
+  | "unknown";
+
+export interface ServiceDef {
+  id: string;
+  /** Windows 服务名（SCM 用，不含空格） */
+  name: string;
+  displayName: string;
+  exePath: string;
+  /** 原始命令行参数，原样拼接 */
+  args: string;
+  workingDir: string;
+  autostart: boolean;
+  restartOnCrash: boolean;
+  restartDelaySecs: number;
+  logFile: string;
+  /** 启动子进程时注入的环境变量快照（解决 LocalSystem 下 profile/PATH 不对的问题） */
+  envOverride?: Record<string, string>;
+}
+
+export interface ServiceConfigFile {
+  version: number;
+  services: ServiceDef[];
+}

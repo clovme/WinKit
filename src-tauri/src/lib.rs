@@ -52,6 +52,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{GUID, Interface, PCWSTR, PWSTR, w};
 
+pub mod service_manager;
+
 const ERROR_CANCELLED_CODE: u32 = 0x8007_04C7;
 const LIBRARY_FILE_NAME: &str = "WinKit.json";
 const LEGACY_LIBRARY_FILE_NAME: &str = "shortcuts.json";
@@ -1929,7 +1931,17 @@ pub fn run() {
             save_environment_variable,
             delete_environment_variable,
             load_environment_profiles,
-            save_environment_profiles
+            save_environment_profiles,
+            service_manager::load_service_configs,
+            service_manager::save_service_configs,
+            service_manager::register_service_command,
+            service_manager::unregister_service_command,
+            service_manager::start_service_command,
+            service_manager::stop_service_command,
+            service_manager::restart_service_command,
+            service_manager::query_service_status_command,
+            service_manager::apply_all_services,
+            service_manager::capture_runtime_env
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

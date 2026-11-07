@@ -6,6 +6,7 @@ import ProgramRow from "./components/ProgramRow.vue";
 import PlanPanel from "./components/PlanPanel.vue";
 import ProcessManager from "./components/ProcessManager.vue";
 import EnvironmentManager from "./components/EnvironmentManager.vue";
+import ServiceManager from "./components/ServiceManager.vue";
 import ToastStack from "./components/ToastStack.vue";
 import { useShortcutLibrary } from "./composables/useShortcutLibrary";
 import { isTauri, pickPrograms } from "./services/shortcutService";
@@ -55,7 +56,7 @@ const allIncluded = computed(
 );
 const someIncluded = computed(() => includedCount.value > 0 && !allIncluded.value);
 const picking = ref(false);
-type AppView = "processes" | "environment" | "shortcuts";
+type AppView = "processes" | "environment" | "services" | "shortcuts";
 const view = ref<AppView>("processes");
 
 function toggleAll() {
@@ -102,6 +103,10 @@ onBeforeUnmount(() => {
 
     <div v-else-if="view === 'environment'" class="app-body process-body">
       <EnvironmentManager />
+    </div>
+
+    <div v-else-if="view === 'services'" class="app-body process-body">
+      <ServiceManager />
     </div>
 
     <div v-else class="app-body">
